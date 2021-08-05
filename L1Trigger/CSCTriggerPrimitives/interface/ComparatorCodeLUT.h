@@ -51,6 +51,8 @@ private:
 
   // access to lookup tables via eventsetup
   const CSCL1TPLookupTableCCLUT* lookupTableCCLUT_;
+
+  bool use11BitPatterns_;
 };
 
 #endif

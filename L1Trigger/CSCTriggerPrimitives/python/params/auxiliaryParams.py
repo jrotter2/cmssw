@@ -31,6 +31,8 @@ commonParam = cms.PSet(
     # comparator-code algorithm to improve
     # CLCT position and bending resolution
     runCCLUT = cms.bool(False),
+    ## option to use 11 bit patterns for CCLUT
+    use11BitPatterns = cms.bool(False),
 
     ## Phase-2 version is not needed for Run-3
     enableAlctPhase2 = cms.bool(False)

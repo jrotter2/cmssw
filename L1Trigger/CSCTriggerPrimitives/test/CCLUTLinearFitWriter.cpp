@@ -33,7 +33,7 @@ const int DEBUG = 0;
 // forward declarations
 class CSCPattern {
 public:
-  CSCPattern(unsigned int id, const CSCPatternBank::LCTPattern& pat);
+  CSCPattern(const unsigned int id, const CSCPatternBank::LCTPattern& pat, const bool use11BitPatterns);
   ~CSCPattern() {}
 
   void printCode(const unsigned code) const;
@@ -45,23 +45,34 @@ public:
 
 private:
   const unsigned int id_;
-  string name_;
+  const string name_;
+  const bool use11BitPatterns_;
+  const unsigned nBits_;
   CSCPatternBank::LCTPattern pat_;
 };
 
-CSCPattern::CSCPattern(unsigned int id, const CSCPatternBank::LCTPattern& pat)
-    : id_(id), name_(std::to_string(id)), pat_(pat) {}
+CSCPattern::CSCPattern(const unsigned int id, const CSCPatternBank::LCTPattern& pat, const bool use11BitPatterns)
+  : id_(id),
+    name_(std::to_string(id)),
+    pat_(pat),
+    use11BitPatterns_(use11BitPatterns),
+    nBits_(use11BitPatterns ? 11 : 12) {
+}
 
 //given a code, prints out how it looks within the pattern
 void CSCPattern::printCode(const unsigned code) const {
   // comparator code per layer
   unsigned layerPattern[CSCConstants::NUM_LAYERS];
   getLayerPattern(code, layerPattern);
+  if (use11BitPatterns_)
+    std::cout << "Pattern " << id_ << ", Code " << code << " " << std::bitset<11>(code) << std::endl;
+  else
+    std::cout << "Pattern " << id_ << ", Code " << code << " " << std::bitset<12>(code) << std::endl;
 
-  std::cout << "Pattern " << id_ << ", Code " << code << " " << std::bitset<12>(code) << std::endl;
   for (unsigned int j = 0; j < CSCConstants::NUM_LAYERS; j++) {
     unsigned trueCounter = 0;  //for each layer, should only have 3
     std::cout << "L" << j + 1 << ": ";
+
     for (unsigned int i = 0; i < CSCConstants::CLCT_PATTERN_WIDTH; i++) {
       if (!pat_[j][i]) {
         printf("-");
@@ -84,20 +95,31 @@ void CSCPattern::printCode(const unsigned code) const {
 }
 
 void CSCPattern::getLayerPattern(const unsigned code, unsigned layerPattern[CSCConstants::NUM_LAYERS]) const {
-  // 12-bit comparator code
+
+  // 12-bit or 11-bit comparator code
   std::bitset<12> cc(code);
 
   for (unsigned ilayer = 0; ilayer < CSCConstants::NUM_LAYERS; ilayer++) {
     std::bitset<2> cclayer;
     cclayer[1] = cc[2 * ilayer + 1];
     cclayer[0] = cc[2 * ilayer];
+    // for 11 bit patterns the half-strip position is always "0X0"
+    // this corresponds to 10???
+    if (ilayer == CSCConstants::KEY_CLCT_LAYER - 1 and use11BitPatterns_) {
+      cclayer[1] = 1;
+      cclayer[0] = 0;
+    }
+    else {
+      cclayer[1] = cc[2 * ilayer + 1];
+      cclayer[0] = cc[2 * ilayer];
+    }
     layerPattern[ilayer] = cclayer.to_ulong();
   }
 }
 
 //fills "code_hits" with how the code "code" would look inside the pattern
-int CSCPattern::recoverPatternCCCombination(
-    const unsigned code, int code_hits[CSCConstants::NUM_LAYERS][CSCConstants::CLCT_PATTERN_WIDTH]) const {
+int CSCPattern::recoverPatternCCCombination(const unsigned code,
+                                            int code_hits[CSCConstants::NUM_LAYERS][CSCConstants::CLCT_PATTERN_WIDTH]) const {
   // comparator code per layer
   unsigned layerPattern[CSCConstants::NUM_LAYERS];
   getLayerPattern(code, layerPattern);
@@ -133,11 +155,17 @@ void setDataWord(unsigned& word, const unsigned newWord, const unsigned shift, c
 unsigned assignPosition(const float fvalue, const float fmin, const float fmax, const unsigned nbits);
 unsigned assignBending(const float fvalue);
 
-int CCLUTLinearFitWriter(unsigned N_LAYER_REQUIREMENT = 3, bool use9bitquality = false) {
+int CCLUTLinearFitWriter(unsigned N_LAYER_REQUIREMENT = 3, bool use9bitquality = false, bool use11BitPatterns = false) {
+
+  const unsigned MY_NUM_COMPARATOR_CODES(use11BitPatterns ? CSCConstants::NUM_COMPARATOR_CODES_11BITS : CSCConstants::NUM_COMPARATOR_CODES);
+
   //all the patterns we will fit
   std::unique_ptr<std::vector<CSCPattern>> newPatterns(new std::vector<CSCPattern>());
   for (unsigned ipat = 0; ipat < 5; ipat++) {
-    newPatterns->emplace_back(ipat, CSCPatternBank::clct_pattern_run3_[ipat]);
+    if (use11BitPatterns)
+      newPatterns->emplace_back(ipat, CSCPatternBank::clct_pattern_run3_11bit_[ipat], true);
+    else
+      newPatterns->emplace_back(ipat, CSCPatternBank::clct_pattern_run3_[ipat], false);
   }
 
   // create output directory
@@ -261,7 +289,7 @@ int CCLUTLinearFitWriter(unsigned N_LAYER_REQUIREMENT = 3, bool use9bitquality =
     outpatternconv << "#<header> v1.0 12 32 </header>\n";
 
     // iterate through each possible comparator code
-    for (unsigned code = 0; code < CSCConstants::NUM_COMPARATOR_CODES; code++) {
+    for (unsigned code = 0; code < MY_NUM_COMPARATOR_CODES; code++) {
       if (DEBUG > 0) {
         cout << "Evaluating..." << endl;
         patt->printCode(code);

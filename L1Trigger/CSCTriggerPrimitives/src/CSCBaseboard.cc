@@ -42,6 +42,7 @@ CSCBaseboard::CSCBaseboard(unsigned endcap,
   runME21ILT_ = commonParams_.getParameter<bool>("runME21ILT");
 
   runCCLUT_ = commonParams_.getParameter<bool>("runCCLUT");
+  use11BitPatterns_ = commonParams_.getParameter<bool>("use11BitPatterns");
 
   // general case
   tmbParams_ = conf.getParameter<edm::ParameterSet>("tmbPhase1");

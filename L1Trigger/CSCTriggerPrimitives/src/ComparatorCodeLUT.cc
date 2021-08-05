@@ -2,7 +2,14 @@
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 ComparatorCodeLUT::ComparatorCodeLUT(const edm::ParameterSet& conf) {
+
+  auto commonParams = conf.getParameter<edm::ParameterSet>("commonParam");
+  use11BitPatterns_ = commonParams.getParameter<bool>("use11BitPatterns");
+
   clct_pattern_ = CSCPatternBank::clct_pattern_run3_;
+  if (use11BitPatterns_) {
+    clct_pattern_ = CSCPatternBank::clct_pattern_run3_11bit_;
+  }
 }
 
 void ComparatorCodeLUT::setESLookupTables(const CSCL1TPLookupTableCCLUT* conf) { lookupTableCCLUT_ = conf; }
@@ -108,6 +115,11 @@ int ComparatorCodeLUT::calculateComparatorCode(const pattern& halfStripPattern) 
   for (unsigned int column = 0; column < CSCConstants::NUM_LAYERS; column++) {
     int rowPat = 0;   //physical arrangement of the three bits
     int rowCode = 0;  //code used to identify the arrangement
+
+    // ignore the key layer for 11-bit patterns
+    // note: the key layer is the 3rd layer, but has number "2" when starting from "0"
+    if (use11BitPatterns_ and column == CSCConstants::KEY_CLCT_LAYER - 1)
+      continue;
 
     //use Firmware definition for comparator code definition
     for (int row = 2; row >= 0; row--) {

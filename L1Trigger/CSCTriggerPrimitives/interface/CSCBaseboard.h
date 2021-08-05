@@ -104,5 +104,6 @@ protected:
   bool runME41Up_;
 
   bool runCCLUT_;
+  bool use11BitPatterns_;
 };
 #endif
