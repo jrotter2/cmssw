@@ -2,7 +2,6 @@
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 ComparatorCodeLUT::ComparatorCodeLUT(const edm::ParameterSet& conf) {
-
   auto commonParams = conf.getParameter<edm::ParameterSet>("commonParam");
   use11BitPatterns_ = commonParams.getParameter<bool>("use11BitPatterns");
 
