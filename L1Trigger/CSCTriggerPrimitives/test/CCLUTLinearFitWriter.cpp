@@ -20,6 +20,7 @@
 #include <math.h>
 #include <memory>
 #include <bitset>
+#include <boost/dynamic_bitset.hpp>
 
 using namespace std;
 
@@ -38,8 +39,8 @@ public:
 
   void printCode(const unsigned code) const;
   void getLayerPattern(const unsigned code, unsigned layerPattern[CSCConstants::NUM_LAYERS]) const;
-  int recoverPatternCCCombination(const unsigned code,
-                                  int code_hits[CSCConstants::NUM_LAYERS][CSCConstants::CLCT_PATTERN_WIDTH]) const;
+  void recoverPatternCCCombination(const unsigned code,
+                                   int code_hits[CSCConstants::NUM_LAYERS][CSCConstants::CLCT_PATTERN_WIDTH]) const;
   string getName() const { return name_; }
   unsigned getId() const { return id_; }
 
@@ -52,22 +53,19 @@ private:
 };
 
 CSCPattern::CSCPattern(const unsigned int id, const CSCPatternBank::LCTPattern& pat, const bool use11BitPatterns)
-  : id_(id),
-    name_(std::to_string(id)),
-    pat_(pat),
-    use11BitPatterns_(use11BitPatterns),
-    nBits_(use11BitPatterns ? 11 : 12) {
-}
+    : id_(id),
+      name_(std::to_string(id)),
+      pat_(pat),
+      use11BitPatterns_(use11BitPatterns),
+      nBits_(use11BitPatterns ? 11 : 12) {}
 
 //given a code, prints out how it looks within the pattern
 void CSCPattern::printCode(const unsigned code) const {
   // comparator code per layer
   unsigned layerPattern[CSCConstants::NUM_LAYERS];
   getLayerPattern(code, layerPattern);
-  if (use11BitPatterns_)
-    std::cout << "Pattern " << id_ << ", Code " << code << " " << std::bitset<11>(code) << std::endl;
-  else
-    std::cout << "Pattern " << id_ << ", Code " << code << " " << std::bitset<12>(code) << std::endl;
+
+  std::cout << "Pattern " << id_ << ", Code " << code << " " << boost::dynamic_bitset<>(nBits_, code) << std::endl;
 
   for (unsigned int j = 0; j < CSCConstants::NUM_LAYERS; j++) {
     unsigned trueCounter = 0;  //for each layer, should only have 3
@@ -84,7 +82,11 @@ void CSCPattern::printCode(const unsigned code) const {
           printf("_");
       }
     }
-    std::cout << " -> " << std::bitset<2>(layerPattern[j]) << std::endl;
+    if (use11BitPatterns_ and j == CSCConstants::KEY_CLCT_LAYER - 1) {
+      std::cout << " -> " << boost::dynamic_bitset<>(1, layerPattern[j]) << std::endl;
+    } else {
+      std::cout << " -> " << boost::dynamic_bitset<>(2, layerPattern[j]) << std::endl;
+    }
   }
 
   printf("    ");
@@ -95,31 +97,28 @@ void CSCPattern::printCode(const unsigned code) const {
 }
 
 void CSCPattern::getLayerPattern(const unsigned code, unsigned layerPattern[CSCConstants::NUM_LAYERS]) const {
-
   // 12-bit or 11-bit comparator code
-  std::bitset<12> cc(code);
-
+  boost::dynamic_bitset<> cc(nBits_, code);
   for (unsigned ilayer = 0; ilayer < CSCConstants::NUM_LAYERS; ilayer++) {
     std::bitset<2> cclayer;
-    cclayer[1] = cc[2 * ilayer + 1];
     cclayer[0] = cc[2 * ilayer];
-    // for 11 bit patterns the half-strip position is always "0X0"
-    // this corresponds to 10???
+    cclayer[1] = cc[2 * ilayer + 1];
+    // special case for key-layer when using 11 bits
     if (ilayer == CSCConstants::KEY_CLCT_LAYER - 1 and use11BitPatterns_) {
-      cclayer[1] = 1;
-      cclayer[0] = 0;
+      cclayer[1] = 0;
     }
-    else {
-      cclayer[1] = cc[2 * ilayer + 1];
-      cclayer[0] = cc[2 * ilayer];
+    // special case for layer 4,5,6 when using 11 bits
+    if (ilayer > CSCConstants::KEY_CLCT_LAYER - 1 and use11BitPatterns_) {
+      cclayer[0] = cc[2 * ilayer - 1];
+      cclayer[1] = cc[2 * ilayer];
     }
     layerPattern[ilayer] = cclayer.to_ulong();
   }
 }
 
 //fills "code_hits" with how the code "code" would look inside the pattern
-int CSCPattern::recoverPatternCCCombination(const unsigned code,
-                                            int code_hits[CSCConstants::NUM_LAYERS][CSCConstants::CLCT_PATTERN_WIDTH]) const {
+void CSCPattern::recoverPatternCCCombination(
+    const unsigned code, int code_hits[CSCConstants::NUM_LAYERS][CSCConstants::CLCT_PATTERN_WIDTH]) const {
   // comparator code per layer
   unsigned layerPattern[CSCConstants::NUM_LAYERS];
   getLayerPattern(code, layerPattern);
@@ -142,7 +141,6 @@ int CSCPattern::recoverPatternCCCombination(const unsigned code,
       }
     }
   }
-  return 0;
 }
 
 int convertToLegacyPattern(const int code_hits[CSCConstants::NUM_LAYERS][CSCConstants::CLCT_PATTERN_WIDTH],
@@ -156,8 +154,8 @@ unsigned assignPosition(const float fvalue, const float fmin, const float fmax, 
 unsigned assignBending(const float fvalue);
 
 int CCLUTLinearFitWriter(unsigned N_LAYER_REQUIREMENT = 3, bool use9bitquality = false, bool use11BitPatterns = false) {
-
-  const unsigned MY_NUM_COMPARATOR_CODES(use11BitPatterns ? CSCConstants::NUM_COMPARATOR_CODES_11BITS : CSCConstants::NUM_COMPARATOR_CODES);
+  const unsigned MY_NUM_COMPARATOR_CODES(use11BitPatterns ? CSCConstants::NUM_COMPARATOR_CODES_11BITS
+                                                          : CSCConstants::NUM_COMPARATOR_CODES);
 
   //all the patterns we will fit
   std::unique_ptr<std::vector<CSCPattern>> newPatterns(new std::vector<CSCPattern>());
@@ -296,9 +294,7 @@ int CCLUTLinearFitWriter(unsigned N_LAYER_REQUIREMENT = 3, bool use9bitquality =
       }
       int hits[CSCConstants::NUM_LAYERS][CSCConstants::CLCT_PATTERN_WIDTH];
 
-      if (patt->recoverPatternCCCombination(code, hits)) {
-        cout << "Error: CC evaluation has failed" << endl;
-      }
+      patt->recoverPatternCCCombination(code, hits);
 
       //put the coordinates in the hits into a vector
       // x = layer, y = position in that layer
@@ -387,10 +383,8 @@ int CCLUTLinearFitWriter(unsigned N_LAYER_REQUIREMENT = 3, bool use9bitquality =
       outslope_sw_bin << code << " " << slope_bin << "\n";
       outpatternconv << code << " " << legacypattern << "\n";
       outfile_fw << setfill('0');
-      if (use9bitquality)
-        outfile_fw << setw(3) << std::hex << fwword << "\n";
-      else
-        outfile_fw << setw(5) << std::hex << fwword << "\n";
+      const unsigned width(use9bitquality ? 5 : 3);
+      outfile_fw << setw(width) << std::hex << fwword << "\n";
 
       // calculate min and max codes
       if (layer >= N_LAYER_REQUIREMENT) {
