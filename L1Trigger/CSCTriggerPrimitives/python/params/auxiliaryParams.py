@@ -33,7 +33,7 @@ commonParam = cms.PSet(
     # CCLUT for TMB is NOT planned for startup Run-3
     runCCLUT_TMB = cms.bool(False),
     # CCLUT for OTMB is planned for startup Run-3
-    runCCLUT_OTMB = cms.bool(False),
+    runCCLUT_OTMB = cms.bool(True),
     ## option to use 11 bit patterns for CCLUT
     use11BitPatterns = cms.bool(False),
 
