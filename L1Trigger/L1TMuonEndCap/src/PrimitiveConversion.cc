@@ -164,23 +164,25 @@ void PrimitiveConversion::convert_csc(int pc_sector,
   conv_hit.set_alct_quality(tp_data.alct_quality);
   conv_hit.set_clct_quality(tp_data.clct_quality);
 
-  // convert slope to Run-2 pattern for CSC TPs coming from MEX/1 chambers
-  // where the CCLUT algorithm is enabled
-  const unsigned slopeList[32] = {10, 10, 10, 8, 8, 8, 6, 6, 6, 4, 4, 4, 2, 2, 2, 2,
-                                  10, 10, 10, 9, 9, 9, 7, 7, 7, 5, 5, 5, 3, 3, 3, 3};
-  unsigned slope_and_sign(tp_data.slope);
-  if (tp_data.bend == 0) {
-    slope_and_sign += 16;
-  }
-  unsigned run2_converted_PID = slopeList[slope_and_sign];
-
   const auto& detid(conv_hit.CreateCSCDetId());
   const bool isMEX1(detid.isME11() or detid.isME21() or detid.isME31() or detid.isME41());
   const bool isMEX2(detid.isME12() or detid.isME22() or detid.isME32() or detid.isME42());
   const bool isME13(detid.isME13());
 
+  // check if CCLUT is on for this CSC TP
   const bool useRun3CCLUT((useRun3CCLUT_OTMB_ and isMEX1) or (useRun3CCLUT_TMB_ and (isMEX2 or isME13)));
   if (useRun3CCLUT) {
+    // convert slope to Run-2 pattern for CSC TPs coming from MEX/1 chambers
+    // where the CCLUT algorithm is enabled
+    const unsigned slopeList[32] = {10, 10, 10, 8, 8, 8, 6, 6, 6, 4, 4, 4, 2, 2, 2, 2,
+                                    10, 10, 10, 9, 9, 9, 7, 7, 7, 5, 5, 5, 3, 3, 3, 3};
+
+    // this LUT follows the same convention as in CSCPatternBank.cc
+    unsigned slope_and_sign(tp_data.slope);
+    if (tp_data.bend == 0) {
+      slope_and_sign += 16;
+    }
+    unsigned run2_converted_PID = slopeList[slope_and_sign];
     conv_hit.set_pattern(run2_converted_PID);
   } else {
     conv_hit.set_pattern(tp_data.pattern);

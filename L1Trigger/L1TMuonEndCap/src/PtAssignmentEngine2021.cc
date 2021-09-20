@@ -611,7 +611,6 @@ float PtAssignmentEngine2021::calculate_pt_xml(const EMTFTrack& track) const {
 
   aux().calcBends(bend_1, bend_2, bend_3, bend_4, pat1, pat2, pat3, pat4, dPhiSign, endcap, mode, true);
 
-
   RPC_1 = (st1 ? (pat1 == 0) : -99);
   RPC_2 = (st2 ? (pat2 == 0) : -99);
   RPC_3 = (st3 ? (pat3 == 0) : -99);
