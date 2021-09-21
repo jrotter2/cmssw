@@ -2,7 +2,13 @@
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 ComparatorCodeLUT::ComparatorCodeLUT(const edm::ParameterSet& conf) {
+  auto commonParams = conf.getParameter<edm::ParameterSet>("commonParam");
+  use11BitPatterns_ = commonParams.getParameter<bool>("use11BitPatterns");
+
   clct_pattern_ = CSCPatternBank::clct_pattern_run3_;
+  if (use11BitPatterns_) {
+    clct_pattern_ = CSCPatternBank::clct_pattern_run3_11bit_;
+  }
 }
 
 void ComparatorCodeLUT::setESLookupTables(const CSCL1TPLookupTableCCLUT* conf) { lookupTableCCLUT_ = conf; }
@@ -102,37 +108,57 @@ void ComparatorCodeLUT::run(CSCCLCTDigi& digi, unsigned numCFEBs) const {
   }
 }
 
+// general case
+int ComparatorCodeLUT::calculateComparatorCodeLayer(int column, const std::array<int, 3>& halfStripPattern) const {
+  // case for key-layer when pattern is 11-bit
+  if (use11BitPatterns_ and column == CSCConstants::KEY_CLCT_LAYER - 1) {
+    return halfStripPattern[1];
+  }
+
+  int rowPat = 0;   //physical arrangement of the three bits
+  int rowCode = 0;  //code used to identify the arrangement
+
+  //use Firmware definition for comparator code definition
+  for (int row = 2; row >= 0; row--) {
+    rowPat = rowPat << 1;  //bitshift the last number to the left
+    rowPat += halfStripPattern[row];
+  }
+  switch (rowPat) {
+    case 0:  //000
+      rowCode = 0;
+      break;
+    case 1:  //00X
+      rowCode = 1;
+      break;
+    case 2:  //0X0
+      rowCode = 2;
+      break;
+    case 4:  //X00
+      rowCode = 3;
+      break;
+    default:
+      // default return value is -1
+      return -1;
+  }
+
+  return rowCode;
+}
+
 int ComparatorCodeLUT::calculateComparatorCode(const pattern& halfStripPattern) const {
   int id = 0;
+  int shift = 0;
 
   for (unsigned int column = 0; column < CSCConstants::NUM_LAYERS; column++) {
-    int rowPat = 0;   //physical arrangement of the three bits
-    int rowCode = 0;  //code used to identify the arrangement
-
-    //use Firmware definition for comparator code definition
-    for (int row = 2; row >= 0; row--) {
-      rowPat = rowPat << 1;  //bitshift the last number to the left
-      rowPat += halfStripPattern[column][row];
+    id += (calculateComparatorCodeLayer(column, halfStripPattern[column]) << shift);
+    // ignore the key layer for 11-bit patterns
+    if (use11BitPatterns_ and column == CSCConstants::KEY_CLCT_LAYER - 1) {
+      shift += 1;
     }
-    switch (rowPat) {
-      case 0:  //000
-        rowCode = 0;
-        break;
-      case 1:  //00X
-        rowCode = 1;
-        break;
-      case 2:  //0X0
-        rowCode = 2;
-        break;
-      case 4:  //00X
-        rowCode = 3;
-        break;
-      default:
-        // default return value is -1
-        return -1;
+    // note: the key layer is the 3rd layer, but has number "2" when starting from "0"
+    // each column has two bits of information, largest layer is most significant bit2
+    else {
+      shift += 2;
     }
-    //each column has two bits of information, largest layer is most significant bit
-    id += (rowCode << 2 * column);
   }
   return id;
 }
