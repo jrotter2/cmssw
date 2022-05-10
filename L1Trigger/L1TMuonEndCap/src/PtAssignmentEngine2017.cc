@@ -11,6 +11,9 @@ const PtAssignmentEngineAux2017& PtAssignmentEngine2017::aux() const {
 }
 
 float PtAssignmentEngine2017::scale_pt(const float pt, const int mode) const {
+
+  std::cout << "PT LUT VERSION: " << ptLUTVersion_ << std::endl; 
+
   emtf_assert(ptLUTVersion_ >= 6);
 
   float pt_xml = -99;
@@ -461,11 +464,13 @@ float PtAssignmentEngine2017::calculate_pt_xml(const address_t& address) const {
   forest.predictEvent(tree_event.get(), 400);
 
   // // Adjust this for different XMLs
-  // float log2_pt = tree_event->predictedValue;
-  // pt_xml = pow(2, fmax(0.0, log2_pt)); // Protect against negative values
+  float log2_pt = tree_event->predictedValue;
+  pt_xml = pow(2, fmax(0.0, log2_pt)); // Protect against negative values
 
-  float inv_pt = tree_event->predictedValue;
-  pt_xml = 1.0 / fmax(0.001, inv_pt);  // Protect against negative values
+  std::cout << "log2_pt: " << tree_event->predictedValue << std::endl;
+
+//  float inv_pt = tree_event->predictedValue;
+//  pt_xml = 1.0 / fmax(0.001, inv_pt);  // Protect against negative values
 
   return pt_xml;
 
@@ -656,11 +661,11 @@ float PtAssignmentEngine2017::calculate_pt_xml(const EMTFTrack& track) const {
   forest.predictEvent(tree_event.get(), 400);
 
   // // Adjust this for different XMLs
-  // float log2_pt = tree_event->predictedValue;
-  // pt_xml = pow(2, fmax(0.0, log2_pt)); // Protect against negative values
+  float log2_pt = tree_event->predictedValue;
+  pt_xml = pow(2, fmax(0.0, log2_pt)); // Protect against negative values
 
-  float inv_pt = tree_event->predictedValue;
-  pt_xml = 1.0 / fmax(0.001, inv_pt);  // Protect against negative values
+//  float inv_pt = tree_event->predictedValue;
+//  pt_xml = 1.0 / fmax(0.001, inv_pt);  // Protect against negative values
 
   return pt_xml;
 

@@ -83,6 +83,8 @@ void PtAssignment::process(EMTFTrackCollection& best_tracks) {
     if (track.Mode() != 1) {
       address = pt_assign_engine_->calculate_address(track);
       xmlpt = pt_assign_engine_->calculate_pt(address);
+      std::cout << "XML_pt: " << xmlpt << std::endl;
+      std::cout << "Address: " << address << std::endl;
 
       // Check address packing / unpacking using PtAssignmentEngine2017::calculate_pt_xml(const EMTFTrack& track)
       if (pt_assign_engine_->get_pt_lut_version() > 5 &&
@@ -151,6 +153,8 @@ void PtAssignment::process(EMTFTrackCollection& best_tracks) {
 
     EMTFPtLUT tmp_LUT = track.PtLUT();
     tmp_LUT.address = address;
+
+    std::cout << "XML_PT: " << xmlpt << ", PT: " << pt << std::endl;
 
     track.set_PtLUT(tmp_LUT);
     track.set_pt_XML(xmlpt);

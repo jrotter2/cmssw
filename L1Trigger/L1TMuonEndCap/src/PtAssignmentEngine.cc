@@ -13,6 +13,11 @@ PtAssignmentEngine::~PtAssignmentEngine() {}
 // void PtAssignmentEngine::read(const std::string& xml_dir, const unsigned xml_nTrees) {
 void PtAssignmentEngine::read(int pt_lut_version, const std::string& xml_dir) {
   std::string xml_dir_full = "L1Trigger/L1TMuonEndCap/data/pt_xmls/" + xml_dir;
+
+  if (ptLUTVersion_ == pt_lut_version)
+    return;
+  ptLUTVersion_ = pt_lut_version;
+
   unsigned xml_nTrees = 64;  // 2016 XMLs
   if (pt_lut_version >= 6)
     xml_nTrees = 400;  // First 2017 XMLs
@@ -26,6 +31,12 @@ void PtAssignmentEngine::read(int pt_lut_version, const std::string& xml_dir) {
     std::stringstream ss;
     ss << xml_dir_full << "/" << mode;
     forests_.at(mode).loadForestFromXML(ss.str().c_str(), xml_nTrees);
+
+    //double boostWeight_ = payload->forest_map_.find(mode + 16)->second / 1000000.;
+    //std::cout << "Loaded forest for mode " << mode << " with boostWeight_ = " << boostWeight_ << std::endl;
+    // std::cout << "  * ptLUTVersion_ = " << ptLUTVersion_ << std::endl;
+    //forests_.at(mode).getTree(0)->setBoostWeight(boostWeight_);
+
   }
 
   return;
@@ -57,13 +68,13 @@ void PtAssignmentEngine::load(int pt_lut_version, const L1TMuonEndCapForest* pay
 
     // Will catch user trying to run with Global Tag settings on 2017 data, rather than fakeEmtfParams. - AWB 08.06.17
 
-    // // Code below can be used to save out trees in XML format
-    // for (int t = 0; t < 64; t++) {
-    //   emtf::Tree* tree = forests_.at(mode).getTree(t);
-    //   std::stringstream ss;
-    //   ss << mode << "/" << t << ".xml";
-    //   tree->saveToXML( ss.str().c_str() );
-    // }
+     // Code below can be used to save out trees in XML format
+     for (int t = 0; t < 400; t++) {
+       emtf::Tree* tree = forests_.at(mode).getTree(t);
+       std::stringstream ss;
+       ss << mode << "/" << t << ".xml";
+       tree->saveToXML( ss.str().c_str() );
+     }
   }
 
   return;

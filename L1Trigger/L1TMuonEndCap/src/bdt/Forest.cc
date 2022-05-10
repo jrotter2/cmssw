@@ -449,6 +449,8 @@ void Forest::predictEvent(Event* e, unsigned int numtrees) {
   // just like in line #2470 of https://root.cern.ch/doc/master/MethodBDT_8cxx_source.html for gradient boosting
   e->predictedValue = trees[0]->getBoostWeight();
 
+ // std::cout << "E Predicted Value: " << e->predictedValue << std::endl;
+
   // i iterates through the trees in the forest. Each tree corrects the last prediction.
   for (unsigned int i = 0; i < numtrees; i++) {
     //std::cout << "++Tree " << i << "..." << std::endl;
@@ -469,6 +471,8 @@ void Forest::appendCorrection(Event* e, int treenum) {
   // Update the event with its new prediction.
   double fit = terminalNode->getFitValue();
   e->predictedValue += fit;
+
+ // std::cout << "E Predicted Value Corrected: " << e->predictedValue << std::endl;
 }
 /////////////////////////////////////////////////////////////////////////////////////
 // ----------------------------------------------------------------------------------
@@ -483,12 +487,15 @@ void Forest::loadForestFromXML(const char* directory, unsigned int numTrees) {
   // Load the Forest.
   // std::cout << std::endl << "Loading Forest from XML ... " << std::endl;
   for (unsigned int i = 0; i < numTrees; i++) {
-    trees[i] = new Tree();
+    trees[i] = new Tree();    
 
     std::stringstream ss;
     ss << directory << "/" << i << ".xml";
 
     trees[i]->loadFromXML(edm::FileInPath(ss.str().c_str()).fullPath().c_str());
+
+    std::cout << "path: " << edm::FileInPath(ss.str().c_str()).fullPath().c_str() << std::endl;
+
   }
 
   //std::cout << "Done." << std::endl << std::endl;

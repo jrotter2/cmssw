@@ -66,6 +66,7 @@ void EMTFSetup::reload(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
 
   // Reload pT LUT if necessary
   if (useCustomLUTs_) {
+    std::cout << "Reading custom LUTs, version: " << get_pt_lut_version() << std::endl;
     pt_assign_engine_->read(get_pt_lut_version(), xmlLutVersion_);
   } else {
     pt_assign_engine_->load(get_pt_lut_version(), condition_helper_.getForest());
